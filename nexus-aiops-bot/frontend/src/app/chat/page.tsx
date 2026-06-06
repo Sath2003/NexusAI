@@ -41,7 +41,6 @@ function CodeBlock({ children, ...props }: any) {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLPreElement>(null);
 
-  // Check if inner child is Excalidraw language fenced code block
   const codeChild = children && children.props ? children : (Array.isArray(children) ? children[0] : null);
   if (codeChild && codeChild.props && codeChild.props.className === "language-excalidraw") {
     try {
@@ -49,8 +48,13 @@ function CodeBlock({ children, ...props }: any) {
       return <ExcalidrawBoard elements={parsedElements.elements || []} />;
     } catch (e) {
       return (
-        <div className="bg-rose-950/20 border border-rose-500/30 text-rose-400 p-3 rounded-lg text-xs font-mono my-2">
-          Failed to render diagram canvas. details: {String(e)}
+        <div>
+          <div className="bg-rose-950/20 border border-rose-500/30 text-rose-400 p-3 rounded-lg text-xs font-mono my-2">
+            Failed to render diagram canvas. details: {String(e)}
+          </div>
+          <pre className="bg-[#020617] border border-white/10 rounded-lg p-4 overflow-x-auto font-mono text-xs text-slate-400 mt-2">
+            {String(codeChild.props.children)}
+          </pre>
         </div>
       );
     }

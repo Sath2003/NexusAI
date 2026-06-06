@@ -19,7 +19,7 @@ class LogRageEngine:
         self.chat_model = ChatBedrock(
             client=bedrock_client,
             model_id=os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"),
-            model_kwargs={"temperature": 0.1}
+            model_kwargs={"temperature": 0.1, "max_tokens": 4096}
         )
         self.vector_store = None
 

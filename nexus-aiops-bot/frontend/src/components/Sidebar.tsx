@@ -113,6 +113,7 @@ export default function Sidebar() {
             </>
           )}
         </div>
+      </nav>
 
       {/* Bottom Profile / Logout */}
       <div className="p-4 mt-auto">

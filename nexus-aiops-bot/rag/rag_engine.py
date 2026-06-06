@@ -67,17 +67,10 @@ class LogRageEngine:
             "4. Facilitate communication: If the user asks to 'send an email' or alert someone, provide the exact Python script (using smtplib or boto3 SES) or bash/curl command needed to automate that task immediately.\n"
             "5. **Interactive Diagram Generation**: If the user asks to draw, generate, design, or sketch an architecture diagram, you MUST output a valid JSON containing the diagram shapes inside a fenced code block marked with language 'excalidraw'.\n"
             "   The JSON schema structure MUST follow this exact pattern:\n"
-<<<<<<< HEAD
             "   {{\n"
             "     \"type\": \"excalidraw\",\n"
             "     \"elements\": [\n"
             "       {{\n"
-=======
-            "   {\n"
-            "     \"type\": \"excalidraw\",\n"
-            "     \"elements\": [\n"
-            "       {\n"
->>>>>>> 5842db0500ee4bca8326f67eb4cf4c3a47c4662e
             "         \"id\": \"unique_id_1\",\n"
             "         \"type\": \"rectangle\",\n"
             "         \"x\": 100,\n"
@@ -89,13 +82,8 @@ class LogRageEngine:
             "         \"fillStyle\": \"hachure\",\n"
             "         \"strokeWidth\": 2,\n"
             "         \"roughness\": 1\n"
-<<<<<<< HEAD
             "       }},\n"
             "       {{\n"
-=======
-            "       },\n"
-            "       {\n"
->>>>>>> 5842db0500ee4bca8326f67eb4cf4c3a47c4662e
             "         \"id\": \"unique_id_2\",\n"
             "         \"type\": \"text\",\n"
             "         \"x\": 110,\n"
@@ -103,13 +91,8 @@ class LogRageEngine:
             "         \"text\": \"ALB Ingress\",\n"
             "         \"fontSize\": 16,\n"
             "         \"fontFamily\": 1\n"
-<<<<<<< HEAD
             "       }},\n"
             "       {{\n"
-=======
-            "       },\n"
-            "       {\n"
->>>>>>> 5842db0500ee4bca8326f67eb4cf4c3a47c4662e
             "         \"id\": \"unique_id_3\",\n"
             "         \"type\": \"arrow\",\n"
             "         \"x\": 175,\n"
@@ -118,15 +101,9 @@ class LogRageEngine:
             "         \"strokeColor\": \"#fbbf24\",\n"
             "         \"strokeWidth\": 2,\n"
             "         \"roughness\": 1\n"
-<<<<<<< HEAD
             "       }}\n"
             "     ]\n"
             "   }}\n"
-=======
-            "       }\n"
-            "     ]\n"
-            "   }\n"
->>>>>>> 5842db0500ee4bca8326f67eb4cf4c3a47c4662e
             "   Draw 4-6 connected nodes (e.g. Route 53, Ingress, Pods, Databases) arranged neatly with clean vertical or horizontal offsets so shapes and arrows do not overlap.\n\n"
             "Format the response using professional markdown with headers, bullet points, and extensive code blocks where appropriate. "
             "Do NOT use simple placeholders; provide fully functional and robust code solutions. Localize all money mentions in Indian Rupees (₹).\n\n"

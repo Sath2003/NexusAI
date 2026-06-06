@@ -93,6 +93,8 @@ export default function AICopilot() {
   const [sending, setSending] = useState(false);
   const [fullName, setFullName] = useState("");
   const [imageFile, setImageFile] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionTitle, setSessionTitle] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,6 +106,51 @@ export default function AICopilot() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const showDefaultWelcome = (nameStr?: string) => {
+    const activeName = nameStr || fullName || "";
+    const firstName = activeName.split(" ")[0];
+    const greeting = getGreeting();
+    const welcome = firstName
+      ? `${greeting}, ${firstName}! 👋 I am the Nexus AI Copilot. I have full visibility into your active incidents and service logs. How can I assist you today?`
+      : `${greeting}! I am the Nexus AI Copilot. I have full visibility into your active incidents and service logs. How can I assist you today?`;
+    setMessages([{ role: "assistant", content: welcome }]);
+    setSessionId(null);
+    setSessionTitle(null);
+  };
+
+  const loadActiveSession = (sid: string) => {
+    setLoading(true);
+    setSessionId(sid);
+    fetchApi(`/chat/sessions/${sid}`)
+      .then((history: any) => {
+        if (Array.isArray(history) && history.length > 0) {
+          const title = history[0].session_title || "Recent Chat";
+          setSessionTitle(title);
+          
+          const mapped = history.map((msg: any) => {
+            let content = msg.content || "";
+            if (msg.role === "user" && msg.image_base64) {
+              content = `🖼️ [Uploaded Architecture Diagram] ${content}`;
+            }
+            return {
+              role: msg.role || "assistant",
+              content: content
+            };
+          });
+          setMessages(mapped);
+        } else {
+          showDefaultWelcome();
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load session messages:", err);
+        showDefaultWelcome();
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -118,59 +165,43 @@ export default function AICopilot() {
     const name = payload.full_name || payload.email || "";
     setFullName(name);
 
-    // Fetch message history from API
-    fetchApi("/chat/history")
-      .then((history: any) => {
-        if (Array.isArray(history) && history.length > 0) {
-          const mapped = history.map((msg: any) => {
-            let content = msg.content || "";
-            if (msg.role === "user" && msg.image_base64) {
-              content = `🖼️ [Uploaded Architecture Diagram] ${content}`;
-            }
-            return {
-              role: msg.role || "assistant",
-              content: content
-            };
-          });
-          setMessages(mapped);
-        } else {
-          // Fallback to default greeting if history is empty
-          const firstName = name.split(" ")[0];
-          const greeting = getGreeting();
-          const welcome = firstName
-            ? `${greeting}, ${firstName}! 👋 I am the Nexus AI Copilot. I have full visibility into your active incidents and service logs. How can I assist you today?`
-            : `${greeting}! I am the Nexus AI Copilot. I have full visibility into your active incidents and service logs. How can I assist you today?`;
-          setMessages([{ role: "assistant", content: welcome }]);
-        }
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const isNew = params.get("new") === "true";
+      const sidParam = params.get("sid");
 
-        // Process search parameter 'q' on initial load
-        if (typeof window !== 'undefined') {
-          const queryParam = new URLSearchParams(window.location.search).get("q");
-          if (queryParam) {
-            setInput(queryParam);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load chat history:", err);
-        const greeting = getGreeting();
-        const welcome = `${greeting}! I am the Nexus AI Copilot. I have full visibility into your active incidents and service logs. How can I assist you today?`;
-        setMessages([{ role: "assistant", content: welcome }]);
-      })
-      .finally(() => {
+      if (isNew) {
+        showDefaultWelcome(name);
         setLoading(false);
-      });
-  }, [router]);
-
-  // Listen to URL search parameter updates (e.g. when clicking sidebar queries while on the chat page)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const queryParam = new URLSearchParams(window.location.search).get("q");
-      if (queryParam) {
-        setInput(queryParam);
+        // Clean query parameters from URL
+        window.history.replaceState({}, "", "/chat");
+        return;
       }
+
+      if (sidParam) {
+        loadActiveSession(sidParam);
+        return;
+      }
+
+      // Default load: fetch sessions list and auto-load the latest session if it exists
+      fetchApi("/chat/sessions")
+        .then((sessions: any) => {
+          if (Array.isArray(sessions) && sessions.length > 0) {
+            const latestSid = sessions[0].session_id;
+            window.history.replaceState({}, "", `/chat?sid=${latestSid}`);
+            loadActiveSession(latestSid);
+          } else {
+            showDefaultWelcome(name);
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load chat sessions:", err);
+          showDefaultWelcome(name);
+          setLoading(false);
+        });
     }
-  }, [pathname]); // pathname or trigger from URL changes
+  }, [pathname]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -187,7 +218,18 @@ export default function AICopilot() {
       ? `🖼️ [Uploaded Architecture Diagram] ${userMsg}`
       : userMsg;
 
-    setMessages((prev) => [...prev, { role: "user", content: userDisplayContent }]);
+    const activeSid = sessionId || `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const activeTitle = sessionTitle || (userMsg.substring(0, 40) + (userMsg.length > 40 ? "..." : ""));
+
+    if (!sessionId) {
+      setSessionId(activeSid);
+      setSessionTitle(activeTitle);
+      setMessages([{ role: "user", content: userDisplayContent }]);
+      window.history.replaceState({}, "", `/chat?sid=${activeSid}`);
+    } else {
+      setMessages((prev) => [...prev, { role: "user", content: userDisplayContent }]);
+    }
+
     setInput("");
     setSending(true);
 
@@ -200,7 +242,9 @@ export default function AICopilot() {
         body: JSON.stringify({ 
           query: payloadQuery, 
           time_window_mins: 60,
-          image_base64: currentImage 
+          image_base64: currentImage,
+          session_id: activeSid,
+          session_title: activeTitle
         }),
       });
       setMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);

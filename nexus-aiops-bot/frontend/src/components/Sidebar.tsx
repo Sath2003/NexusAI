@@ -9,38 +9,28 @@ import { fetchApi } from "@/lib/api";
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const [history, setHistory] = useState<string[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
 
-  const loadHistory = () => {
+  const loadSessions = () => {
     const token = typeof window !== 'undefined' && localStorage.getItem("jwt_token");
     if (!token) return;
     
-    fetchApi("/chat/history")
+    fetchApi("/chat/sessions")
       .then((res: any) => {
         if (Array.isArray(res)) {
-          const userMessages = res.filter((m: any) => m.role === "user");
-          const uniqueQueries: string[] = [];
-          const seen = new Set<string>();
-          for (let i = userMessages.length - 1; i >= 0; i--) {
-            const query = userMessages[i].content;
-            if (query && !seen.has(query)) {
-              seen.add(query);
-              uniqueQueries.push(query);
-            }
-          }
-          setHistory(uniqueQueries.slice(0, 5));
+          setSessions(res.slice(0, 15)); // Display up to 15 recent chat sessions
         }
       })
-      .catch((err) => console.error("Failed to load sidebar chat history:", err));
+      .catch((err) => console.error("Failed to load sidebar chat sessions:", err));
   };
 
   useEffect(() => {
-    loadHistory();
+    loadSessions();
 
     // Listen to custom updates dispatched from the chat panel
-    window.addEventListener("chat-updated", loadHistory);
+    window.addEventListener("chat-updated", loadSessions);
     return () => {
-      window.removeEventListener("chat-updated", loadHistory);
+      window.removeEventListener("chat-updated", loadSessions);
     };
   }, [pathname]);
 
@@ -93,22 +83,36 @@ export default function Sidebar() {
         })}
 
         {/* Recent Chats Section */}
-        {history.length > 0 && (
-          <div className="pt-4 border-t border-slate-800/50 mt-4 px-2">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-2">Recent Queries</p>
-            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-              {history.map((query, index) => (
-                <Link key={index} href={`/chat?q=${encodeURIComponent(query)}`}>
-                  <div className="w-full flex items-center space-x-2 px-2 py-1.5 rounded text-xs text-slate-400 hover:text-indigo-300 hover:bg-white/5 transition-all truncate cursor-pointer">
-                    <MessageSquare size={12} className="shrink-0 text-slate-500" />
-                    <span className="truncate" title={query}>{query}</span>
-                  </div>
-                </Link>
-              ))}
+        <div className="pt-4 border-t border-slate-800/50 mt-4 px-2">
+          <Link href="/chat?new=true">
+            <div className="w-full flex items-center justify-center space-x-2 px-3 py-2 mb-3 rounded-lg border border-indigo-500/30 bg-indigo-600/10 hover:bg-indigo-600/20 text-xs text-indigo-300 transition-all font-semibold cursor-pointer">
+              <span>+ New Chat</span>
             </div>
-          </div>
-        )}
-      </nav>
+          </Link>
+
+          {sessions.length > 0 && (
+            <>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-2 px-2">Recent Chats</p>
+              <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+                {sessions.map((session, index) => {
+                  const isActive = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get("sid") === session.session_id;
+                  return (
+                    <Link key={index} href={`/chat?sid=${session.session_id}`}>
+                      <div className={`w-full flex items-center space-x-2 px-2 py-1.5 rounded text-xs transition-all truncate cursor-pointer ${
+                        isActive
+                          ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/20"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                      }`}>
+                        <MessageSquare size={12} className="shrink-0 text-slate-500" />
+                        <span className="truncate" title={session.session_title}>{session.session_title}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
 
       {/* Bottom Profile / Logout */}
       <div className="p-4 mt-auto">

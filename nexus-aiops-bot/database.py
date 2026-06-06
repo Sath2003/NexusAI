@@ -261,14 +261,16 @@ def get_latest_deployment(tenant_id: str) -> Optional[dict]:
         return None
 
 # --- Chat History Management (with Local Fallback) ---
-def store_chat_message(tenant_id: str, role: str, content: str, image_base64: Optional[str] = None) -> bool:
-    """Saves a single message in the chat history repository."""
+def store_chat_message(tenant_id: str, session_id: str, session_title: str, role: str, content: str, image_base64: Optional[str] = None) -> bool:
+    """Saves a single message inside a specific chat session in the repository."""
     timestamp = datetime.datetime.utcnow().isoformat() + "Z"
     try:
         table = get_chat_history_table()
         table.put_item(Item={
             'tenant_id': tenant_id,
             'timestamp': timestamp,
+            'session_id': session_id,
+            'session_title': session_title,
             'role': role,
             'content': content,
             'image_base64': image_base64
@@ -286,11 +288,13 @@ def store_chat_message(tenant_id: str, role: str, content: str, image_base64: Op
         history.append({
             'tenant_id': tenant_id,
             'timestamp': timestamp,
+            'session_id': session_id,
+            'session_title': session_title,
             'role': role,
             'content': content,
             'image_base64': image_base64
         })
-        history = history[-300:] # Cap storage history size
+        history = history[-500:] # Cap storage history size
         with open(local_path, "w") as f:
             json.dump(history, f, indent=2)
         return True
@@ -298,18 +302,18 @@ def store_chat_message(tenant_id: str, role: str, content: str, image_base64: Op
         print(f"Local Chat History write failed: {local_ex}")
         return False
 
-def get_chat_history(tenant_id: str, limit: int = 50) -> list:
-    """Retrieves the message logs for a given tenant."""
+def get_chat_sessions(tenant_id: str) -> list:
+    """Aggregates and returns unique chat sessions with their latest titles and activity timestamps."""
     try:
         table = get_chat_history_table()
         response = table.query(
             KeyConditionExpression=boto3.dynamodb.conditions.Key('tenant_id').eq(tenant_id),
-            ScanIndexForward=True, # Oldest first so it renders in correct chronological order
-            Limit=limit
+            ScanIndexForward=True
         )
-        return response.get('Items', [])
+        items = response.get('Items', [])
+        return _group_messages_into_sessions(items)
     except Exception as e:
-        print(f"DynamoDB Chat History read failed: {e}. Falling back to local file.")
+        print(f"DynamoDB Chat Sessions read failed: {e}. Falling back to local file.")
         
     try:
         local_path = "local_chat_history.json"
@@ -317,10 +321,49 @@ def get_chat_history(tenant_id: str, limit: int = 50) -> list:
             with open(local_path, "r") as f:
                 history = json.load(f)
             tenant_history = [msg for msg in history if msg.get('tenant_id') == tenant_id]
-            return tenant_history[-limit:]
+            return _group_messages_into_sessions(tenant_history)
         return []
     except Exception as local_ex:
-        print(f"Local Chat History read failed: {local_ex}")
+        print(f"Local Chat Sessions read failed: {local_ex}")
+        return []
+
+def _group_messages_into_sessions(messages: list) -> list:
+    sessions_dict = {}
+    for msg in messages:
+        sid = msg.get("session_id")
+        if not sid:
+            continue
+        sessions_dict[sid] = {
+            "session_id": sid,
+            "session_title": msg.get("session_title") or "Unnamed Chat",
+            "last_active": msg.get("timestamp")
+        }
+    sessions_list = list(sessions_dict.values())
+    sessions_list.sort(key=lambda s: s["last_active"], reverse=True)
+    return sessions_list
+
+def get_chat_session_messages(tenant_id: str, session_id: str) -> list:
+    """Retrieves all messages belonging to a specific session_id."""
+    try:
+        table = get_chat_history_table()
+        response = table.query(
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('tenant_id').eq(tenant_id),
+            FilterExpression=boto3.dynamodb.conditions.Attr('session_id').eq(session_id),
+            ScanIndexForward=True
+        )
+        return response.get('Items', [])
+    except Exception as e:
+        print(f"DynamoDB Chat Messages read failed: {e}. Falling back to local file.")
+        
+    try:
+        local_path = "local_chat_history.json"
+        if os.path.exists(local_path):
+            with open(local_path, "r") as f:
+                history = json.load(f)
+            return [msg for msg in history if msg.get('tenant_id') == tenant_id and msg.get('session_id') == session_id]
+        return []
+    except Exception as local_ex:
+        print(f"Local Chat Messages read failed: {local_ex}")
         return []
 
 

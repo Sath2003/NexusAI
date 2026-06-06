@@ -17,7 +17,7 @@ from boto3.dynamodb.conditions import Key
 from database import (
     init_dynamodb, get_users_table, get_keys_table, get_incidents_table, get_logs_table,
     store_log, get_logs, update_reliability_score, get_reliability_score, store_deployment, get_latest_deployment,
-    store_chat_message, get_chat_history
+    store_chat_message, get_chat_sessions, get_chat_session_messages
 )
 import notifications
 from predictive_engine import PredictiveEngine
@@ -68,6 +68,8 @@ class ChatRequest(BaseModel):
     query: str
     time_window_mins: Optional[int] = 30
     image_base64: Optional[str] = None
+    session_id: Optional[str] = None
+    session_title: Optional[str] = None
 
 class ChatResponse(BaseModel):
     answer: str
@@ -242,9 +244,14 @@ async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_c
     try:
         tenant_id = current_user.get("user_id")
         
+        session_id = request.session_id or f"session_{uuid.uuid4().hex}"
+        session_title = request.session_title or (request.query[:40] + ("..." if len(request.query) > 40 else ""))
+        
         # Save user message to history
         store_chat_message(
             tenant_id=tenant_id,
+            session_id=session_id,
+            session_title=session_title,
             role="user",
             content=request.query,
             image_base64=request.image_base64
@@ -261,6 +268,8 @@ async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_c
         # Save assistant response to history
         store_chat_message(
             tenant_id=tenant_id,
+            session_id=session_id,
+            session_title=session_title,
             role="assistant",
             content=answer
         )
@@ -272,11 +281,19 @@ async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_c
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/chat/history")
-def get_chat_history_endpoint(current_user: dict = Depends(get_current_user)):
+@app.get("/api/chat/sessions")
+def get_chat_sessions_endpoint(current_user: dict = Depends(get_current_user)):
     try:
         tenant_id = current_user.get("user_id")
-        return get_chat_history(tenant_id)
+        return get_chat_sessions(tenant_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/chat/sessions/{session_id}")
+def get_chat_session_messages_endpoint(session_id: str, current_user: dict = Depends(get_current_user)):
+    try:
+        tenant_id = current_user.get("user_id")
+        return get_chat_session_messages(tenant_id, session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

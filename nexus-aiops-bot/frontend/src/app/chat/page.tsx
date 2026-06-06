@@ -295,8 +295,8 @@ export default function AICopilot() {
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] flex space-x-4 ${msg.role === "user" ? "flex-row-reverse space-x-reverse" : ""}`}>
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} w-full max-w-full`}>
+                <div className={`max-w-[85%] md:max-w-[80%] flex space-x-4 ${msg.role === "user" ? "flex-row-reverse space-x-reverse" : ""} w-full`}>
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                       msg.role === "user" ? "bg-indigo-600" : "bg-emerald-600"
@@ -305,16 +305,16 @@ export default function AICopilot() {
                     {msg.role === "user" ? <User size={16} /> : <Bot size={16} />}
                   </div>
                   <div
-                    className={`p-4 rounded-2xl ${
+                    className={`p-4 rounded-2xl max-w-full overflow-x-auto ${
                       msg.role === "user"
                         ? "bg-indigo-600/20 border border-indigo-500/30 text-indigo-100 whitespace-pre-wrap"
-                        : "bg-black/40 border border-white/10 text-slate-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                        : "bg-black/40 border border-white/10 text-slate-300 shadow-[0_0_15px_rgba(16,185,129,0.1)] w-full"
                     }`}
                   >
                     {msg.role === "user" ? (
                       msg.content
                     ) : (
-                      <div className="text-slate-300 max-w-none text-sm leading-relaxed">
+                      <div className="text-slate-300 max-w-full overflow-hidden text-sm leading-relaxed">
                         <ReactMarkdown
                           components={{
                             pre: ({ ...props }) => <CodeBlock {...props} />,
@@ -325,7 +325,7 @@ export default function AICopilot() {
                             ul: ({ ...props }) => <ul className="list-disc pl-5 space-y-1 my-2" {...props} />,
                             ol: ({ ...props }) => <ol className="list-decimal pl-5 space-y-1 my-2" {...props} />,
                             li: ({ ...props }) => <li className="text-slate-300" {...props} />,
-                            p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                            p: ({ ...props }) => <div className="mb-2 last:mb-0" {...props} />,
                             a: ({ ...props }) => <a className="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
                           }}
                         >
